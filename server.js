@@ -3,12 +3,12 @@ const http = require('http');
 const socketIo = require('socket.io');
 const escpos = require('escpos');
 
-// Load network adapter
+// Load the network adapter for ESC/POS
 escpos.Network = require('escpos-network');
 
-// Printer IP address
-const PRINTER_IP = '192.168.1.188';
-const PRINTER_PORT = 9100; // Default port for network printers
+// Printer IP address and port (make sure these are correct for your printer)
+const PRINTER_IP = '192.168.1.188';  // Replace with your printer's actual IP address
+const PRINTER_PORT = 9100;  // Replace with the correct port if it's different
 
 const app = express();
 const server = http.createServer(app);
@@ -21,20 +21,30 @@ app.use(express.json());
 app.post('/print', (req, res) => {
     const { text } = req.body;
 
+    console.log('Received print job with text:', text);
+    console.log('Attempting to connect to printer at', PRINTER_IP, 'on port', PRINTER_PORT);
+
+    // Set up the printer connection
     const device = new escpos.Network(PRINTER_IP, PRINTER_PORT);
     const printer = new escpos.Printer(device);
 
-    device.open(function(error){
+    // Try to open the connection to the printer
+    device.open(function(error) {
         if (error) {
-            return res.status(500).send('Printer connection error');
+            console.error('Error connecting to printer:', error);
+            return res.status(500).send('Printer connection error: ' + error.message);
         }
 
+        console.log('Connected to printer. Sending print job...');
+        
+        // Send the text to the printer and cut the paper
         printer
             .text(text)
             .cut()
-            .close();
-
-        res.status(200).send('Print job sent');
+            .close(function() {
+                console.log('Print job sent successfully.');
+                res.status(200).send('Print job sent');
+            });
     });
 });
 
